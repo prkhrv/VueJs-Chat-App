@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+  <head>
+    <meta charset="utf-8">
+    <title>Chat App</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.2.1/css/bootstrap.min.css" integrity="sha384-GJzZqFGwb1QTTN6wy59ffF1BuGJpLSa9DkKMp0DgiMDm4iYMj70gZWKYbI706tWS" crossorigin="anonymous">
+  </head>
+  <body>
+
+    <div id="app">
+      <div class="container">
+
+        <div v-if="ready">
+          <p v-for="item in info" >
+            {{item.name}} {{item.type}}
+          </p>
+        </div>
+
+        <div v-if="!ready">
+
+          <h4>Enter Your name</h4>
+          <form @submit.prevent="addName">
+            <div class="form-group">
+              <input type="text" class="form-control" v-model="name" placeholder="Enter Your name">
+              <input type="submit" value="Add" class="btn btn-sm mt-1 btn-info">
+            </div>
+          </form>
+        </div>
+
+        <h1 v-else>{{name}}</h1>
+
+        <div class="card bg-info" v-if="ready">
+          <div class="card-header text-white">
+            Sellacious Chat-App
+            <span class="float-right">{{nusers}} Connected</span>
+          </div>
+            <ul class="list-group list-group-flush text-right">
+              <small v-if="typing" class="text-white">{{typing}} is typing</small>
+              <li class="list-group-item" v-for="message in messages">
+                <span :class="{'float-left':message.type ===1}">
+                  <small>{{message.by}}: </small>
+                  {{message.message}}
+                </span>
+
+
+
+              </li>
+            </ul>
+
+            <div class="card-body">
+              <form @submit.prevent="send">
+                <div class="form-group">
+                  <input type="text" class="form-control" v-model="newmessage" placeholder="Type Here">
+                </div>
+              </form>
+
+            </div>
+
+
+        </div>
+
+      </div>
+
+    </div>
+
+
+
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/vue@2.6.0/dist/vue.js"></script>
+  <script>
+    var socket = io.connect()
+
+    let app = new Vue({
+      el:'#app',
+      data:{
+        newmessage:null,
+        messages:[],
+        typing: false,
+        name: null,
+        ready: false,
+        info: [],
+        nusers: 0,
+
+
+      },
+      watch:{
+          newmessage(value){
+            value ? socket.emit("typing",this.name) : socket.emit("stopTyping")
+          }
+      },
+      methods:{
+        send(){
+            this.messages.push({message: this.newmessage, type: 0, by: 'Me'})
+            socket.emit("chat-message", {message:this.newmessage, user:this.name})
+            this.newmessage = null
+
+        },
+        addName(){
+          this.ready = true
+          socket.emit("joined",this.name)
+        }
+      },
+      created(){
+
+        window.onbeforeunload = () =>{
+          socket.emit("left", this.name)
+        }
+
+
+        socket.on('nusers',(data)=>{
+          this.nusers = data
+        });
+
+
+        socket.emit("Created","Its Created")
+        socket.on("Created",(data)=>{
+          console.log(data);
+        });
+
+        socket.on("chat-message",(data)=>{
+          this.messages.push({message: data.message, type: 1, by:data.user,})
+        });
+
+        socket.on("typing", (name)=>{
+          this.typing = name
+        });
+
+        socket.on("stopTyping", ()=>{
+          this.typing = false
+        });
+
+        socket.on("joined",(data)=>{
+          this.info.push({name:data,type:'joined'})
+          setTimeout(()=>{
+            this.info = []
+          }, 5000);
+        });
+
+        socket.on("left",(data)=>{
+          this.info.push({name:data,type:'left'})
+          setTimeout(()=>{
+            this.info = []
+          }, 5000);
+        });
+      }
+    })
+  </script>
+  </body>
+</html>
