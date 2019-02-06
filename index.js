@@ -39,6 +39,7 @@ io.on("connection", (socket)=>{
 
   socket.on("disconnect", ()=>{
     console.log("socket is disconnected");
+    io.emit("nusers",Object.keys(io.sockets.connected).length);
   });
 });
 
